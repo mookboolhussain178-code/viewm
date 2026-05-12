@@ -1,122 +1,1224 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  BookOpen, Stethoscope, ChevronRight, ArrowLeft, Loader2, 
+  Library, Layers, FileText, Download, Trash2, AlertCircle,
+  Baby, Ear, Eye, Bone, ScanFace, Scale, Globe, Activity, Scissors, 
+  Sparkles, FolderTree, Bookmark, Headphones, Play, Pause, Cloud,
+  Rewind, FastForward, Gauge, Radio, ServerCog, HardDrive, ChevronDown,
+  Brain, Dna, Search, Clock, Zap
+} from 'lucide-react';
 
-function App() {
-  const [count, setCount] = useState(0)
+// ==========================================
+// 1. CONFIGURATION & API SECRETS
+// ==========================================
+// Note: Hardcoded for ES2015 Canvas Preview compatibility. 
+// When deploying to Vercel, replace with process.env or import.meta.env
+const TURSO_URL = 'https://notesm-masroor.aws-ap-south-1.turso.io/v2/pipeline';
+const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzg1MDU3NjksImlkIjoiMDE5ZTE3MzMtZDIwMS03NjY4LWFjNTAtNmEzNzYyMTMxODAwIiwicmlkIjoiZWJiZDlmYzEtOWQ1Yy00MDM4LWI5ODItYjcyMzk0NTZmYzEwIn0.-roz5dU0xwtMoqxz6Qf_noy9Xglnru5OernNtn7D5yXcpA6s1Xi9ZiipiYjOyl-sGQfJeCOEBuxZ6ZcbF7YlBA';
+const apiKey = ""; // Gemini API is injected automatically by Canvas Environment
+const GOOGLE_CLIENT_ID = "385521646829-av0otakn0p8hbf1j38jbs5f3nsd81vcc.apps.googleusercontent.com";
 
+
+// ==========================================
+// 2. CSS ARCHITECTURE (EMBEDDED FOR STABILITY)
+// ==========================================
+const fontsCSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Shadows+Into+Light&family=Patrick+Hand&family=Reenie+Beanie&family=Architects+Daughter&family=Indie+Flower&family=Gochi+Hand&family=Cedarville+Cursive&family=Herr+Von+Muellerhoff&family=La+Belle+Aurore&family=League+Script&family=Meddon&family=Nothing+You+Could+Do&family=Qwigley&family=Zeyada&display=swap');
+  
+  /* Font Families */
+  .font-patrick { --font-heading: 'Patrick Hand', cursive; --font-body: 'Patrick Hand', cursive; --font-accent: 'Kalam', cursive; }
+  .font-kalam { --font-heading: 'Kalam', cursive; --font-body: 'Kalam', cursive; --font-accent: 'Patrick Hand', cursive; }
+  .font-notebook { --font-heading: 'Caveat', cursive; --font-body: 'Caveat', cursive; --font-accent: 'Shadows Into Light', cursive; }
+  .font-shadows { --font-heading: 'Shadows Into Light', cursive; --font-body: 'Shadows Into Light', cursive; --font-accent: 'Patrick Hand', cursive; }
+  .font-architect { --font-heading: 'Architects Daughter', cursive; --font-body: 'Indie Flower', cursive; --font-accent: 'Patrick Hand', cursive; }
+  .font-gochi { --font-heading: 'Gochi Hand', cursive; --font-body: 'Gochi Hand', cursive; --font-accent: 'Caveat', cursive; }
+  .font-indie { --font-heading: 'Indie Flower', cursive; --font-body: 'Indie Flower', cursive; --font-accent: 'Architects Daughter', cursive; }
+  .font-reenie { --font-heading: 'Reenie Beanie', cursive; --font-body: 'Shadows Into Light', cursive; --font-accent: 'Caveat', cursive; }
+  .font-aurore { --font-heading: 'La Belle Aurore', cursive; --font-body: 'La Belle Aurore', cursive; --font-accent: 'Cedarville Cursive', cursive; }
+  .font-meddon { --font-heading: 'Meddon', cursive; --font-body: 'Nothing You Could Do', cursive; --font-accent: 'Zeyada', cursive; }
+  .font-zeyada { --font-heading: 'Zeyada', cursive; --font-body: 'Zeyada', cursive; --font-accent: 'La Belle Aurore', cursive; }
+  .font-cedarville { --font-heading: 'Cedarville Cursive', cursive; --font-body: 'Cedarville Cursive', cursive; --font-accent: 'Qwigley', cursive; }
+  .font-nothing { --font-heading: 'Nothing You Could Do', cursive; --font-body: 'Nothing You Could Do', cursive; --font-accent: 'La Belle Aurore', cursive; }
+  .font-qwigley { --font-heading: 'Qwigley', cursive; --font-body: 'Qwigley', cursive; --font-accent: 'Herr Von Muellerhoff', cursive; }
+  .font-muellerhoff { --font-heading: 'Herr Von Muellerhoff', cursive; --font-body: 'Herr Von Muellerhoff', cursive; --font-accent: 'Meddon', cursive; }
+  .font-league { --font-heading: 'League Script', cursive; --font-body: 'League Script', cursive; --font-accent: 'Nothing You Could Do', cursive; }
+  
+  /* Color Themes */
+  .theme-classic { --bg-color: #fcf9f2; --text-main: #0d47a1; --heading: #4a148c; --red-flag: #b71c1c; --green-pen: #1b5e20; --yellow-hl: #ffeb3b; --line-color: #e4e4e4; --margin-line: rgba(255, 100, 100, 0.4); --callout-bg: rgba(255, 255, 255, 0.95); --callout-border: #333; --hole-color: #2c3e50; }
+  .theme-dark { --bg-color: #1a1b26; --text-main: #7aa2f7; --heading: #bb9af7; --red-flag: #f7768e; --green-pen: #9ece6a; --yellow-hl: #e0af68; --line-color: #24283b; --margin-line: rgba(247, 118, 142, 0.3); --callout-bg: rgba(26, 27, 38, 0.98); --callout-border: #565f89; --hole-color: #16161e; }
+  .theme-sepia { --bg-color: #f4ecd8; --text-main: #3e2723; --heading: #5d4037; --red-flag: #b71c1c; --green-pen: #33691e; --yellow-hl: #fbc02d; --line-color: #d7ccc8; --margin-line: rgba(255, 100, 100, 0.4); --callout-bg: rgba(244, 236, 216, 0.95); --callout-border: #4e342e; --hole-color: #3e2723; }
+  
+  /* Paper Textures & Desk */
+  .paper-ruled { background-image: linear-gradient(var(--line-color) 1.5px, transparent 1.5px); background-size: 100% 2rem; }
+  .paper-dotted { background-image: radial-gradient(var(--line-color) 2px, transparent 2px); background-size: 1.5rem 1.5rem; }
+  .paper-grid { background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 1.5rem 1.5rem; }
+  .paper-blank { background-image: none; }
+  
+  .desk-bg { 
+    background-color: #2c3e50; 
+    background-image: radial-gradient(#34495e 2px, transparent 2px); 
+    background-size: 30px 30px; 
+  }
+  
+  /* Notebook Layout */
+  .notes-content, .notes-content * { box-sizing: border-box !important; word-break: break-word; }
+  
+  .notebook-page { 
+    box-sizing: border-box; background-color: var(--bg-color); position: relative; 
+    padding: 1.5rem 1rem 1.5rem 3.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
+    border-radius: 4px 8px 8px 4px; width: 100%; max-width: 780px; min-height: 800px; 
+    margin: 0 auto 2rem auto; color: var(--text-main); overflow: hidden; 
+  }
+  @media (min-width: 640px) { 
+    .notebook-page { padding: 3rem 2.5rem 3rem 5.5rem; border-radius: 4px 12px 12px 4px; min-height: 1100px; margin-bottom: 3rem; } 
+  }
+  
+  /* Margin Line SVG */
+  .notes-content::before { 
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1.5rem; width: 1.5rem; 
+    background-image: url("data:image/svg+xml,%3Csvg width='30' height='100' viewBox='0 0 30 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 15 0 C 35 25, 35 25, 15 50 C -5 75, -5 75, 15 100' stroke='rgba(255,100,100,0.4)' stroke-width='2' fill='none'/%3E%3Cpath d='M 15 0 C -5 25, -5 25, 15 50 C 35 75, 35 75, 15 100' stroke='rgba(255,100,100,0.4)' stroke-width='2' fill='none'/%3E%3Cline x1='10' y1='12.5' x2='20' y2='12.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='5' y1='25' x2='25' y2='25' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='37.5' x2='20' y2='37.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='62.5' x2='20' y2='62.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='5' y1='75' x2='25' y2='75' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='87.5' x2='20' y2='87.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3C/svg%3E"); 
+    background-size: 100% 100px; background-repeat: repeat-y; z-index: 10; 
+  }
+  @media (min-width: 640px) { .notes-content::before { left: 2.5rem; width: 2rem; background-size: 100% 120px; } }
+  
+  /* Binder Holes */
+  .binder-holes { position: absolute; top: 0; left: 0; bottom: 0; width: 1.5rem; background: linear-gradient(to right, rgba(0,0,0,0.05), transparent); border-right: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; padding: 2rem 0; z-index: 11; }
+  @media (min-width: 640px) { .binder-holes { width: 3rem; } }
+  .hole { width: 8px; height: 8px; background: var(--hole-color); border-radius: 50%; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); }
+  @media (min-width: 640px) { .hole { width: 16px; height: 16px; box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5); } }
+  
+  /* Images & Backgrounds */
+  .cover-doodle-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.85; mix-blend-mode: multiply; z-index: 1; pointer-events: none; }
+  .theme-dark .cover-doodle-bg { mix-blend-mode: normal; filter: invert(1) hue-rotate(180deg) opacity(0.8); }
+  .theme-sepia .cover-doodle-bg { mix-blend-mode: multiply; filter: sepia(0.5); opacity: 0.9; }
+  
+  .content-doodle-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.05; mix-blend-mode: multiply; filter: grayscale(1); z-index: 0; pointer-events: none; }
+  .theme-dark .content-doodle-bg { mix-blend-mode: screen; filter: invert(1) grayscale(1); opacity: 0.03; }
+  .theme-sepia .content-doodle-bg { mix-blend-mode: multiply; filter: sepia(0.8); opacity: 0.08; }
+  
+  .notes-inner-container { position: relative; z-index: 2; } 
+  
+  /* FOCUS / KARAOKE HIGHLIGHT */
+  .karaoke-highlight {
+    position: relative; z-index: 10;
+    background: rgba(255, 235, 59, 0.25) !important;
+    border-left: 4px solid var(--heading) !important;
+    border-radius: 6px; padding: 4px 10px;
+    transform: scale(1.02);
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  }
+  .theme-dark .karaoke-highlight { 
+    background: rgba(255, 255, 255, 0.15) !important; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  /* Typography & Elements */
+  .cover-page { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .cover-title-plate { position: relative; z-index: 20; background: var(--bg-color); border: 3px dashed var(--heading); border-radius: 20px; padding: 2.5rem 3rem; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); transform: rotate(-2deg); max-width: 85%; }
+  .theme-dark .cover-title-plate { box-shadow: 8px 8px 0px rgba(0,0,0,0.5); }
+  .cover-title { color: var(--heading); font-family: var(--font-heading); font-size: 2.5rem; line-height: 1.2; margin: 0; }
+  @media (min-width: 640px) { .cover-title { font-size: 3.5rem; } }
+  .cover-subtitle { margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .cover-subtitle-top { color: var(--text-main); font-family: var(--font-body); font-size: 1.1rem; opacity: 0.8; }
+  .cover-subtitle-bottom { color: var(--heading); font-family: 'Homemade Apple', cursive; font-size: 0.75rem; opacity: 0.9; transform: rotate(-2deg); margin-top: 2px; }
+  
+  .notes-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-family: var(--font-body); font-size: 1rem; background: rgba(255,255,255,0.3); border-radius: 8px; overflow: hidden; clear: both; }
+  .theme-dark .notes-content table { background: rgba(0,0,0,0.2); }
+  .notes-content th, .notes-content td { padding: 8px 12px; text-align: left; border-bottom: 2px dashed var(--line-color); }
+  .notes-content th { color: var(--heading); font-family: var(--font-heading); font-size: 1.15rem; border-bottom: 3px solid var(--heading); }
+  .notes-content tr:last-child td { border-bottom: none; }
+  
+  .inline-art { float: right; width: 45%; max-width: 300px; margin: 0.5rem 0 1rem 1.5rem; background: transparent; border: none; box-shadow: none; display: flex; justify-content: center; align-items: center; clear: right; }
+  .inline-art img, .mnemonic-art img, .summary-art img { width: 100%; height: auto; object-fit: contain; mix-blend-mode: multiply; filter: drop-shadow(0px 6px 15px rgba(0,0,0,0.15)); border-radius: 4px; }
+  .theme-dark .inline-art img, .theme-dark .mnemonic-art img, .theme-dark .summary-art img { mix-blend-mode: normal; filter: drop-shadow(0px 6px 15px rgba(0,0,0,0.4)) invert(0.92) hue-rotate(180deg); }
+  
+  .mnemonic-layout { display: flex; flex-direction: column; gap: 1rem; align-items: center; justify-content: flex-start; margin: 1.5rem 0; clear: both; background: rgba(0,0,0,0.02); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--line-color); }
+  @media (min-width: 768px) { .mnemonic-layout { flex-direction: row; } }
+  .mnemonic-text { flex: 1; color: var(--text-main); font-size: 0.95rem; font-family: var(--font-body); line-height: 1.5rem; }
+  @media (min-width: 640px) { .mnemonic-text { font-size: 1.1rem; line-height: 1.6rem; } }
+  .mnemonic-art { width: 100%; max-width: 320px; background: transparent; border: none; box-shadow: none; display: flex; justify-content: center; }
+  .summary-layout { width: 100%; padding: 0.5rem; margin: 2rem 0; display: flex; justify-content: center; clear: both; }
+  .summary-art { width: 100%; aspect-ratio: 16/9; background: transparent; border: none; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  
+  .margin-doodle { display: inline-block; font-size: 1.3rem; margin-right: 8px; vertical-align: middle; }
+  
+  .flowchart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; margin: 1.5rem 0; width: 100%; clear: both; }
+  .flowchart-box { border: 2px solid var(--heading); padding: 8px 16px; border-radius: 8px; font-family: var(--font-accent); font-size: 1.1rem; background: var(--callout-bg); text-align: center; max-width: 80%; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+  .flow-arrow { width: 24px; height: 35px; color: var(--heading); margin: 0.15rem 0; display: block; }
+  
+  .notes-content h2, .notes-content h3 { color: var(--heading); font-weight: 700; margin-top: 1rem; margin-bottom: 0.25rem; font-family: var(--font-heading); transform: rotate(-1deg); clear: both; }
+  .notes-content h2 { font-size: 1.6rem; line-height: 2rem; }
+  .notes-content h3 { font-size: 1.3rem; transform: rotate(0.5deg); }
+  .notes-content p, .notes-content ul { color: var(--text-main); font-size: 0.95rem; font-family: var(--font-body); margin-bottom: 0.5rem; line-height: 1.5rem; letter-spacing: 0.3px; width: 100%; }
+  @media (min-width: 640px) { .notes-content p, .notes-content ul { font-size: 1.1rem; line-height: 1.6rem; } }
+  .notes-content .highlight { background-color: var(--yellow-hl) !important; border-radius: 4px; padding: 2px 6px; color: #000 !important; font-weight: 700 !important; display: inline-block; }
+  
+  .notes-content .callout { border: 2px solid var(--callout-border); border-radius: 6px; padding: 1.2rem 1rem 0.8rem 1rem; margin: 1.2rem 0; background: var(--callout-bg); transform: rotate(1deg); box-shadow: 2px 3px 0px rgba(0,0,0,0.15); position: relative; width: 100%; font-family: var(--font-accent); font-size: 1rem; line-height: 1.4rem; color: var(--text-main); clear: both; }
+  @media (min-width: 768px) { .notes-content .callout { float: right; clear: right; width: 45%; min-width: 250px; margin: 0.2rem 0 0.8rem 1.2rem; transform: rotate(1.5deg); } }
+  .notes-content .callout-title { position: absolute; top: -14px; left: 10px; background: var(--bg-color); padding: 2px 8px; font-weight: bold; font-family: var(--font-heading); font-size: 1.1rem; color: var(--heading); transform: rotate(-2deg); border-radius: 4px; border: 2px solid var(--callout-border); }
+  .notes-content .callout.red-flag-box { border-color: var(--red-flag); color: var(--red-flag); }
+  .notes-content .callout.red-flag-box .callout-title { border-color: var(--red-flag); color: var(--red-flag); }
+  .notes-content .callout.viva-tip { border-color: #f57f17; }
+  .notes-content .callout.viva-tip .callout-title { border-color: #f57f17; color: #f57f17; }
+  .theme-dark .notes-content .callout.viva-tip { border-color: #ffb74d; }
+  .theme-dark .notes-content .callout.viva-tip .callout-title { border-color: #ffb74d; color: #ffb74d; }
+  
+  /* Hide overall scrollbar to preserve app feel */
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+`;
+
+// ==========================================
+// 3. UTILITIES & API HELPERS
+// ==========================================
+
+const apiFetchWithBackoff = async (url, payload) => {
+  const delays = [1000, 2000, 4000, 8000, 16000];
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(()=>({}));
+        throw new Error(err.error?.message || `HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      if (attempt === 4) throw error;
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+};
+
+const getDriveFilename = (noteId) => `ViewM_Masterclass_${noteId}.wav`;
+
+const findInDrive = async (token, noteId) => {
+  if (!token) return null;
+  const filename = getDriveFilename(noteId);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}' and trashed=false`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+};
+
+const saveToCloud = async (token, noteId, blob) => {
+  if (!token || token === "mock") return; // Skip if testing locally without login
+  const filename = getDriveFilename(noteId);
+  const existingId = await findInDrive(token, noteId);
+  if (existingId) await deleteFromCloud(token, noteId);
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=media', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'audio/wav' },
+    body: blob
+  });
+  const data = await res.json();
+  if (!data.id) throw new Error("Google Drive upload failed");
+
+  await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}`, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: filename })
+  });
+};
+
+const fetchFromCloud = async (token, noteId) => {
+  if (!token || token === "mock") return null; 
+  const fileId = await findInDrive(token, noteId);
+  if (!fileId) return null;
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) return null;
+  return await res.blob();
+};
+
+const deleteFromCloud = async (token, noteId) => {
+  if (!token || token === "mock") return;
+  const fileId = await findInDrive(token, noteId);
+  if (!fileId) return;
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+const getAllCloudKeys = async (token) => {
+  if (!token || token === "mock") return [];
+  let keys = []; let pageToken = '';
+  do {
+    const url = `https://www.googleapis.com/drive/v3/files?q=name contains 'ViewM_Masterclass_' and trashed=false&fields=nextPageToken,files(name)&pageToken=${pageToken}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) break;
+    const data = await res.json();
+    if (data.files) {
+      data.files.forEach(f => {
+        const match = f.name.match(/ViewM_Masterclass_(.+)\.wav/);
+        if (match) keys.push(match[1]);
+      });
+    }
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return keys;
+};
+
+const splitTextIntoParagraphs = (text, maxLength = 1200) => {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const chunks = []; let current = "";
+  for (let sentence of sentences) {
+    if (current.length + sentence.length > maxLength) {
+      if (current.trim()) chunks.push(current.trim());
+      current = sentence;
+    } else { current += " " + sentence; }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+};
+
+const executeTurso = async (sql, args = []) => {
+  const formattedArgs = args.map(arg => ({ type: 'text', value: String(arg) }));
+  const res = await fetch(TURSO_URL, {
+    method: 'POST', headers: { 'Authorization': `Bearer ${TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql, args: formattedArgs } }, { type: "close" }] })
+  });
+  const data = await res.json();
+  const results = data.results || data.batched_results || [];
+  if (results.length === 0) throw new Error("Invalid response format from Database.");
+  const result = results[0];
+  if (result.type === "error" || result.error) throw new Error(result.error?.message || result.error || "Database Error");
+  const responsePayload = result.response?.result || result.response;
+  if (!responsePayload || !responsePayload.rows) return [];
+  
+  return responsePayload.rows.map(row => {
+    const obj = {};
+    responsePayload.cols.forEach((col, i) => { 
+      const cell = row[i];
+      obj[col.name] = (cell && typeof cell === 'object' && cell.type) ? (cell.type === 'null' ? null : cell.value) : cell; 
+    });
+    return obj;
+  });
+};
+
+const categorizeWithGeminiBatched = async (allTopics) => {
+  if (!allTopics || allTopics.length === 0) return {};
+  const resultDict = {};
+  const BATCH_SIZE = 30; 
+
+  for (let i = 0; i < allTopics.length; i += BATCH_SIZE) {
+    const batch = allTopics.slice(i, i + BATCH_SIZE);
+    const payload = {
+      contents: [{ parts: [{ text: `Categorize the following medical topics into subject, section, and chapter. "subject" must be one of: Medicine, Surgery, OBS & Gynae, Pediatrics, ENT, Ophthalmology, Orthopaedics, Dermatology, Community Medicine, Forensic Medicine, Others. Topics: ${JSON.stringify(batch)}` }] }],
+      systemInstruction: { parts: [{ text: "Return strictly valid JSON corresponding to the schema." }] },
+      generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { categorizations: { type: "ARRAY", items: { type: "OBJECT", properties: { topic: { type: "STRING" }, subject: { type: "STRING" }, section: { type: "STRING" }, chapter: { type: "STRING" } } } } } } }
+    };
+    try {
+      const data = await apiFetchWithBackoff(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, payload);
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (responseText) {
+        const parsed = JSON.parse(responseText);
+        parsed.categorizations.forEach(item => {
+          resultDict[item.topic] = { subject: item.subject || 'Others', section: item.section || 'General', chapter: item.chapter || 'Miscellaneous' };
+        });
+      }
+    } catch (error) { console.error("AI Categorization batch failed", error); }
+  }
+  return resultDict;
+};
+
+const concatUint8Arrays = (a, b) => {
+  const c = new Uint8Array(a.length + b.length);
+  c.set(a, 0); c.set(b, a.length); return c;
+};
+
+const pcmToWav = (pcmData, sampleRate = 24000) => {
+  if (!pcmData || pcmData.length === 0) return null;
+  const numChannels = 1; const safeSampleRate = sampleRate || 24000; const byteRate = safeSampleRate * numChannels * 2; const blockAlign = numChannels * 2;
+  const buffer = new ArrayBuffer(44 + pcmData.length); const view = new DataView(buffer);
+  const writeString = (view, offset, string) => { for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i)); };
+  try {
+    writeString(view, 0, 'RIFF'); view.setUint32(4, 36 + pcmData.length, true);
+    writeString(view, 8, 'WAVE'); writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numChannels, true);
+    view.setUint32(24, safeSampleRate, true); view.setUint32(28, byteRate, true); view.setUint16(32, blockAlign, true); view.setUint16(34, 16, true);
+    writeString(view, 36, 'data'); view.setUint32(40, pcmData.length, true);
+    const pcm8 = new Uint8Array(pcmData); const wav8 = new Uint8Array(buffer, 44); wav8.set(pcm8);
+    return new Blob([view], { type: 'audio/wav' });
+  } catch (e) { return null; }
+};
+
+const backgroundGeneratePodcast = async (noteId, topic, gToken, setStatusFn = ()=>{}) => {
+  if (!gToken) throw new Error("No Google Auth Token");
+  
+  setStatusFn('Fetching note data...');
+  const rows = await executeTurso(`SELECT data_json FROM clinical_notes WHERE id = ?`, [noteId]);
+  if (!rows || rows.length === 0) throw new Error("Note data missing");
+  
+  let parsedData = {};
+  try {
+    parsedData = typeof rows[0].data_json === 'string' ? JSON.parse(rows[0].data_json) : (rows[0].data_json || {});
+    if (typeof parsedData === 'string') parsedData = JSON.parse(parsedData);
+  } catch(e) {}
+  
+  const htmlPages = Array.isArray(parsedData.generatedPages) ? parsedData.generatedPages : (parsedData.generatedPages ? [parsedData.generatedPages] : []);
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = htmlPages.join(" ");
+  const rawText = tempDiv.textContent || tempDiv.innerText || "";
+
+  setStatusFn('Reading notes & preparing Masterclass...');
+
+  const textChunks = splitTextIntoParagraphs(rawText, 1500);
+  let completeScript = "";
+
+  for (let i = 0; i < textChunks.length; i++) {
+    const scriptPayload = {
+      contents: [{ 
+        parts: [{ 
+          text: `You are writing an incredibly detailed, comprehensive medical masterclass podcast script. 
+          HOSTS: "Dr. Atlas" (expert attending) and "Sam" (curious medical student).
+          TASK: Deeply explain the following section of notes. DO NOT SUMMARIZE. Expand on the physiology, pathology, pharmacology, and clinical presentation. Go line-by-line through the concepts. Aim for a deep, long-form discussion.
+          FORMAT: EVERY line must start with "Atlas: " or "Sam: ". No stage directions. 
+          TEXT TO EXPLAIN IN DEPTH: ${textChunks[i]}` 
+        }] 
+      }]
+    };
+    const scriptData = await apiFetchWithBackoff(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, scriptPayload);
+    const scriptText = scriptData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (scriptText) completeScript += scriptText + "\n";
+  }
+
+  if (!completeScript) throw new Error("No script generated");
+  setStatusFn('Dr. Atlas & Sam entering the booth...');
+
+  const lines = completeScript.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const audioChunks = []; let currentChunk = ""; let lastSpeaker = "Atlas:";
+  for (const line of lines) {
+    let safeLine = line.replace(/[*#_\[\]()]/g, ''); 
+    if (safeLine.startsWith('Atlas:')) lastSpeaker = 'Atlas:';
+    else if (safeLine.startsWith('Sam:')) lastSpeaker = 'Sam:';
+    else safeLine = `${lastSpeaker} ${safeLine}`;
+    
+    if (currentChunk.length + safeLine.length > 800) { if (currentChunk) audioChunks.push(currentChunk); currentChunk = safeLine + '\n'; } 
+    else { currentChunk += safeLine + '\n'; }
+  }
+  if (currentChunk) audioChunks.push(currentChunk);
+
+  let allPcmBytes = new Uint8Array(0); let sampleRate = 24000;
+
+  for (let i = 0; i < audioChunks.length; i++) {
+    setStatusFn(`Recording Block ${i + 1} of ${audioChunks.length}...`);
+    const audioPayload = {
+      contents: [{ parts: [{ text: audioChunks[i] }] }],
+      generationConfig: { responseModalities: ["AUDIO"], speechConfig: { multiSpeakerVoiceConfig: { speakerVoiceConfigs: [
+              { speaker: "Sam", voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } },
+              { speaker: "Atlas", voiceConfig: { prebuiltVoiceConfig: { voiceName: "Charon" } } }
+      ] } } }, model: "gemini-2.5-flash-preview-tts"
+    };
+    const audioData = await apiFetchWithBackoff(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, audioPayload);
+    const inlineData = audioData.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    if (inlineData && inlineData.data) {
+      const binaryString = window.atob(inlineData.data);
+      const len = binaryString.length; const bytes = new Uint8Array(len);
+      for (let j = 0; j < len; j++) bytes[j] = binaryString.charCodeAt(j);
+      if (i === 0) { const match = inlineData.mimeType.match(/rate=(\d+)/); if (match) sampleRate = parseInt(match[1]); }
+      allPcmBytes = concatUint8Arrays(allPcmBytes, bytes);
+    }
+    if (i < audioChunks.length - 1) await new Promise(r => setTimeout(r, 4000)); 
+  }
+
+  setStatusFn('Uploading to Google Drive...');
+  const masterWavBlob = pcmToWav(allPcmBytes, sampleRate);
+  if (masterWavBlob) await saveToCloud(gToken, noteId, masterWavBlob); 
+};
+
+const getSubjectIcon = (subject) => {
+  const s = (subject || '').toLowerCase();
+  if (s.includes('medicine') && !s.includes('community') && !s.includes('forensic')) return <Stethoscope className="w-10 h-10 mb-3 text-blue-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('surgery')) return <Scissors className="w-10 h-10 mb-3 text-red-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('obs') || s.includes('gynae')) return <Baby className="w-10 h-10 mb-3 text-pink-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('pediatrics')) return <Baby className="w-10 h-10 mb-3 text-purple-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('ent')) return <Ear className="w-10 h-10 mb-3 text-orange-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('ophthalmology')) return <Eye className="w-10 h-10 mb-3 text-teal-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('orthopaedics')) return <Bone className="w-10 h-10 mb-3 text-stone-200 group-hover:scale-110 transition-transform" />;
+  if (s.includes('dermatology')) return <ScanFace className="w-10 h-10 mb-3 text-rose-400 group-hover:scale-110 transition-transform" />;
+  if (s.includes('community')) return <Globe className="w-10 h-10 mb-3 text-gray-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" />;
+  if (s.includes('forensic')) return <Scale className="w-10 h-10 mb-3 text-gray-400 group-hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" />;
+  return <Activity className="w-10 h-10 mb-3 text-emerald-400 group-hover:scale-110 transition-transform" />;
+};
+
+const GenZMedBackground = () => (
+  <div className="fixed inset-0 z-[-1] overflow-hidden bg-[#0A0A0E]">
+    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/30 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-blue-900/20 blur-[150px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }} />
+    <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 50 50 Q 60 50 60 40 Q 60 50 70 50 Q 60 50 60 60 Q 60 50 50 50' /%3E%3Cpath d='M 180 150 C 180 130 220 130 220 150 C 220 170 180 200 180 200 C 180 200 140 170 140 150 C 140 130 180 130 180 150 Z' /%3E%3Cpath d='M 160 160 L 170 150 L 180 170 L 190 140 L 200 160' /%3E%3Cpath d='M 320 80 L 320 120 C 320 130 300 130 300 130 L 300 80 Z' /%3E%3Cpath d='M 320 90 C 330 90 330 110 320 110' /%3E%3Cpath d='M 305 70 Q 310 60 305 50 M 315 70 Q 320 60 315 50' /%3E%3Cpath d='M 80 280 L 120 240 A 15 15 0 1 1 140 260 L 100 300 A 15 15 0 1 1 80 280 Z' /%3E%3Cpath d='M 100 260 L 120 280' /%3E%3Cpath d='M 280 280 L 260 310 L 275 310 L 265 340 L 295 300 L 280 300 Z' /%3E%3Cpath d='M 350 250 Q 370 270 350 290 Q 330 310 350 330' /%3E%3Cpath d='M 370 250 Q 350 270 370 290 Q 390 310 370 330' /%3E%3Cline x1='355' y1='265' x2='365' y2='265' /%3E%3Cline x1='345' y1='285' x2='375' y2='285' /%3E%3Cline x1='355' y1='315' x2='365' y2='315' /%3E%3C/g%3E%3C/svg%3E")`, backgroundSize: '400px', animation: 'panBg 80s linear infinite' }} />
+    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+    <style>{`@keyframes panBg { from { background-position: 0 0; } to { background-position: 400px 400px; } }`}</style>
+  </div>
+);
+
+// ==========================================
+// 4. MAIN APPLICATION COMPONENT
+// ==========================================
+export default function App() {
+  // DB & Pagination State
+  const [notes, setNotes] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  
+  const [hierarchy, setHierarchy] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [globalError, setGlobalError] = useState(null);
+  const [isAiSorting, setIsAiSorting] = useState(false);
+  
+  // Google Auth
+  const [googleToken, setGoogleToken] = useState(null);
+
+  // Navigation State
+  const [viewState, setViewState] = useState('subjects');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [currentNote, setCurrentNote] = useState(null);
+  const [isOpeningNote, setIsOpeningNote] = useState(null);
+  const [recentlyReadId, setRecentlyReadId] = useState(localStorage.getItem('viewm_recent_note'));
+
+  // App Actions
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Auto-Sync Audio Queue
+  const [syncQueue, setSyncQueue] = useState([]);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const isGeneratingRef = useRef(false);
+
+  // Audio Player State
+  const [podcastState, setPodcastState] = useState('idle'); 
+  const [podcastBlob, setPodcastBlob] = useState(null);
+  const [podcastAudioUrl, setPodcastAudioUrl] = useState(null);
+  const [podcastStatusText, setPodcastStatusText] = useState("");
+  const [podcastProgress, setPodcastProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [karaokeEnabled, setKaraokeEnabled] = useState(true);
+  
+  const audioRef = useRef(null);
+
+  // --- INIT GOOGLE SCRIPT ---
+  useEffect(() => {
+    if (!document.getElementById('gsi-client')) {
+      const script = document.createElement('script');
+      script.id = 'gsi-client';
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  const handleGoogleLogin = () => {
+    if (!window.google) return alert("Google Login service is still loading. Please wait a moment.");
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (response) => {
+        if (response.error) {
+          console.error("Auth error", response.error);
+          alert("Google Auth Failed");
+        } else {
+          setGoogleToken(response.access_token);
+        }
+      },
+    });
+    client.requestAccessToken();
+  };
+
+  const rebuildHierarchy = (notesArray, aiCache) => {
+    try {
+      const dict = {};
+      notesArray.forEach(note => {
+        const topic = note.topic || 'Unknown';
+        const cat = aiCache[topic] || { subject: 'Others', section: 'General', chapter: 'Miscellaneous' };
+        const subject = cat.subject || 'Others';
+        const section = cat.section || 'General';
+        const chapter = cat.chapter || 'Miscellaneous';
+
+        if (!dict[subject]) dict[subject] = {};
+        if (!dict[subject][section]) dict[subject][section] = {};
+        if (!dict[subject][section][chapter]) dict[subject][section][chapter] = [];
+        dict[subject][section][chapter].push(note);
+      });
+      setHierarchy(dict);
+    } catch (e) { console.error("Hierarchy error", e); }
+  };
+
+  // --- FETCH NOTES ---
+  const loadNotes = async (isLoadMore = false) => {
+    try {
+      const limit = 50;
+      const currentOffset = isLoadMore ? offset + limit : 0;
+      
+      const rows = await executeTurso(`SELECT id, topic, cover_image_url, created_at FROM clinical_notes ORDER BY created_at DESC LIMIT ${limit} OFFSET ${currentOffset}`);
+      if (rows.length < limit) setHasMore(false);
+      
+      const combinedNotes = isLoadMore ? [...notes, ...rows] : rows;
+      setNotes(combinedNotes);
+      setOffset(currentOffset);
+
+      let aiCache = {};
+      try { const localCacheStr = localStorage.getItem('viewm_ai_cache'); if (localCacheStr) aiCache = JSON.parse(localCacheStr); } catch(e) {}
+      
+      const uncategorizedTopics = [...new Set(combinedNotes.map(r => r.topic).filter(t => t && !aiCache[t]))];
+
+      if (uncategorizedTopics.length > 0) {
+        setIsAiSorting(true);
+        const newCategories = await categorizeWithGeminiBatched(uncategorizedTopics);
+        const mergedCache = { ...aiCache, ...newCategories };
+        try { localStorage.setItem('viewm_ai_cache', JSON.stringify(mergedCache)); } catch(e){}
+        rebuildHierarchy(combinedNotes, mergedCache);
+        setIsAiSorting(false);
+      } else {
+        rebuildHierarchy(combinedNotes, aiCache);
+      }
+    } catch (e) {
+      console.error("Fetch failed", e); setGlobalError(e.message || "Failed to connect to ViewM Database.");
+    } finally { setIsLoading(false); }
+  };
+
+  useEffect(() => { loadNotes(false); }, []);
+
+  // --- CHECK G-DRIVE SYNC QUEUE ---
+  useEffect(() => {
+    if (!googleToken || notes.length === 0) return;
+    const checkCloudForMissingPodcasts = async () => {
+      try {
+        const cloudKeys = await getAllCloudKeys(googleToken);
+        const unPodcastedNotes = notes.filter(n => !cloudKeys.includes(n.id));
+        if (unPodcastedNotes.length > 0) setSyncQueue(unPodcastedNotes.slice(0, 5)); 
+      } catch (e) { console.error("Failed checking G-Drive.", e); }
+    };
+    checkCloudForMissingPodcasts();
+  }, [googleToken, notes]);
+
+  // --- BACKGROUND SYNC WORKER ---
+  useEffect(() => {
+    let isActive = true;
+    const processQueue = async () => {
+      if (isAutoSyncing || syncQueue.length === 0 || !isActive || !googleToken || isGeneratingRef.current) return;
+      setIsAutoSyncing(true);
+      isGeneratingRef.current = true;
+      const noteToSync = syncQueue[0];
+      
+      try {
+        await backgroundGeneratePodcast(noteToSync.id, noteToSync.topic, googleToken);
+        if (currentNote && currentNote.id === noteToSync.id && podcastState === 'idle') {
+          const blob = await fetchFromCloud(googleToken, currentNote.id);
+          if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
+        }
+      } catch (e) { console.error("Auto-sync failed", e); }
+      
+      if (isActive) { 
+        setSyncQueue(prev => prev.slice(1)); 
+        setIsAutoSyncing(false); 
+        isGeneratingRef.current = false;
+      }
+    };
+    const timer = setTimeout(processQueue, 5000);
+    return () => { isActive = false; clearTimeout(timer); };
+  }, [syncQueue, isAutoSyncing, currentNote, podcastState, googleToken]);
+
+  // --- OPEN NOTE (ON-DEMAND) ---
+  const handleOpenNote = async (noteMeta) => {
+    setIsOpeningNote(noteMeta.id);
+    try {
+      const rows = await executeTurso(`SELECT data_json FROM clinical_notes WHERE id = ?`, [noteMeta.id]);
+      if (rows.length > 0) {
+        setCurrentNote({ ...noteMeta, data_json: rows[0].data_json });
+        localStorage.setItem('viewm_recent_note', noteMeta.id);
+        setRecentlyReadId(noteMeta.id);
+        setViewState('reader');
+      }
+    } catch (e) { alert("Failed to load note content."); } 
+    finally { setIsOpeningNote(null); }
+  };
+
+  // --- RENDER HYDRATION & GC ---
+  useEffect(() => {
+    if (viewState === 'reader' && currentNote) {
+      setPodcastState('idle'); setPodcastBlob(null); setPodcastAudioUrl(null);
+      setIsPlaying(false); setCurrentTime(0); setDuration(0); setPlaybackRate(1);
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+
+      let parsedData = {};
+      try {
+        parsedData = typeof currentNote.data_json === 'string' ? JSON.parse(currentNote.data_json) : (currentNote.data_json || {});
+        if (typeof parsedData === 'string') parsedData = JSON.parse(parsedData); 
+      } catch (e) { console.warn("Parse error", e); }
+
+      // Hydrate offline images
+      setTimeout(() => {
+        try {
+          const slotImages = parsedData.slotImages || {};
+          const slots = document.querySelectorAll('.visual-slot');
+          slots.forEach((slot, idx) => {
+            if (slotImages[`slot_${idx}`]) slot.innerHTML = `<img src="${slotImages[`slot_${idx}`]}" style="width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply;" />`;
+            else slot.innerHTML = `<span style="font-size: 10px; color: red;">Image offline</span>`;
+          });
+        } catch (e) {}
+      }, 200);
+
+      // Check Cloud for existing podcast
+      if (googleToken) {
+        fetchFromCloud(googleToken, currentNote.id).then(blob => {
+          if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
+        });
+      } else {
+        fetchFromCloud("mock", currentNote.id).then(blob => {
+           if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
+        });
+      }
+    }
+
+    // Explicit garbage collection on unmount or URL change
+    return () => { 
+      if (podcastAudioUrl) {
+         URL.revokeObjectURL(podcastAudioUrl); 
+      }
+    };
+  }, [viewState, currentNote, googleToken]);
+
+  // --- KARAOKE FOCUS MODE ENGINE ---
+  useEffect(() => {
+    if (viewState === 'reader' && karaokeEnabled && isPlaying && duration > 0) {
+      const container = document.getElementById('notebook-paper');
+      if (!container) return;
+      
+      const elements = Array.from(container.querySelectorAll('.notes-inner-container p, .notes-inner-container h2, .notes-inner-container h3, .notes-inner-container li, .notes-inner-container .callout'));
+      if (elements.length === 0) return;
+
+      const progress = currentTime / duration;
+      let targetIndex = Math.floor(progress * elements.length);
+      if (targetIndex >= elements.length) targetIndex = elements.length - 1;
+
+      elements.forEach((el, idx) => {
+        if (idx === targetIndex) el.classList.add('karaoke-highlight');
+        else el.classList.remove('karaoke-highlight');
+      });
+    } else {
+      const container = document.getElementById('notebook-paper');
+      if (container) {
+        container.querySelectorAll('.karaoke-highlight').forEach(el => el.classList.remove('karaoke-highlight'));
+      }
+    }
+  }, [currentTime, duration, isPlaying, karaokeEnabled, viewState]);
+
+  // --- AUDIO CONTROLS ---
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    try {
+      if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
+      else { audioRef.current.play(); setIsPlaying(true); }
+    } catch(e) { console.error("Playback error", e); }
+  };
+  const skipTime = (amount) => { 
+    if (audioRef.current) {
+      try { audioRef.current.currentTime += amount; } catch(e){}
+    }
+  };
+  const toggleSpeed = () => {
+    if (!audioRef.current) return;
+    const speeds = [1, 1.5, 2, 0.5]; const nextSpeed = speeds[(speeds.indexOf(playbackRate) + 1) % speeds.length];
+    try { audioRef.current.playbackRate = nextSpeed; setPlaybackRate(nextSpeed); } catch(e){}
+  };
+  const formatTime = (time) => {
+    if (isNaN(time) || !isFinite(time)) return "0:00";
+    const mins = Math.floor(time / 60); const secs = Math.floor(time % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // --- MANUAL AUDIO GEN ---
+  const handleManualPodcastGen = async () => {
+    if (isGeneratingRef.current) return alert("Generation already in progress.");
+    setPodcastState('loading'); setPodcastStatusText("Compiling deep-dive script..."); setPodcastProgress(10);
+    isGeneratingRef.current = true;
+    try {
+      await backgroundGeneratePodcast(currentNote.id, currentNote.topic, googleToken || "mock", (status) => {
+         setPodcastStatusText(status); setPodcastProgress(prev => prev < 90 ? prev + 5 : prev);
+      });
+      setPodcastProgress(95);
+      const blob = await fetchFromCloud(googleToken || "mock", currentNote.id);
+      if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastProgress(100); setPodcastState('ready'); }
+    } catch(e) { 
+      setPodcastState('idle'); 
+      alert("Generation failed. " + e.message); 
+    } finally {
+      isGeneratingRef.current = false;
+    }
+  };
+
+  // --- UNIVERSAL WIPE ---
+  const handleDeleteUniversal = async () => {
+    if (!currentNote) return;
+    setIsDeleting(true);
+    try {
+      // 1. Drop DB Row
+      await executeTurso(`DELETE FROM clinical_notes WHERE id = ?`, [currentNote.id]);
+      // 2. Drop G-Drive File
+      await deleteFromCloud(googleToken || "mock", currentNote.id);
+
+      // 3. Reset Local State Immediately
+      const updatedNotes = notes.filter(n => n.id !== currentNote.id);
+      setNotes(updatedNotes);
+      let aiCache = {}; try { aiCache = JSON.parse(localStorage.getItem('viewm_ai_cache') || '{}'); } catch(e){}
+      rebuildHierarchy(updatedNotes, aiCache);
+      
+      // Force Hard-Nav back to Library to prevent blank VDOM errors
+      setShowDeleteConfirm(false); 
+      setCurrentNote(null);
+      if (audioRef.current) { audioRef.current.pause(); setPodcastAudioUrl(null); }
+      setViewState('subjects');
+      
+    } catch (err) { 
+      console.error("Failed to delete note:", err); 
+      setShowDeleteConfirm(false); 
+      alert("Failed to delete from server.");
+    } finally { setIsDeleting(false); }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!currentNote) return;
+    setIsDownloading(true);
+    try {
+      if (!window.html2pdf) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+          script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
+        });
+      }
+      const element = document.getElementById('notebook-paper');
+      const safeFilename = `${(currentNote.topic || 'medical').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_note.pdf`;
+      const opt = { margin: 0, filename: safeFilename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+      await window.html2pdf().set(opt).from(element).save();
+    } catch (err) { console.error("PDF generation failed:", err); } finally { setIsDownloading(false); }
+  };
+
+  // ==========================================
+  // RENDERS
+  // ==========================================
+
+  if (globalError) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <div className="min-h-screen flex flex-col items-center justify-center text-white relative z-10 p-6">
+          <AlertCircle className="w-16 h-16 text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+          <h2 className="text-2xl font-bold tracking-widest uppercase drop-shadow-md text-red-400">System Error</h2>
+          <p className="text-gray-300 mt-2 text-center max-w-md bg-black/40 p-4 rounded-xl backdrop-blur-md border border-red-500/20">{globalError}</p>
+          <button onClick={() => window.location.reload()} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full transition-all">Reload ViewM</button>
+        </div>
+      </>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <div className="min-h-screen flex flex-col items-center justify-center text-white relative z-10">
+          <Loader2 className="w-16 h-16 animate-spin text-blue-400 mb-4 drop-shadow-lg" />
+          <h2 className="text-xl font-bold tracking-widest uppercase drop-shadow-md">Syncing ViewM Vault</h2>
+        </div>
+      </>
+    );
+  }
+
+  const TopSyncBanner = () => {
+    if (!googleToken) {
+      const currentOrigin = window.location.origin;
+      return (
+        <div className="fixed top-0 left-0 w-full bg-blue-900/90 border-b border-blue-500/50 backdrop-blur-xl z-[100] py-2 px-4 flex flex-col justify-center items-center gap-1 text-blue-200 text-[11px] font-bold tracking-widest cursor-pointer hover:bg-blue-800 transition-colors shadow-lg" onClick={handleGoogleLogin}>
+          <div className="flex items-center gap-2 text-white">
+            <HardDrive className="w-4 h-4" /> CLICK TO CONNECT GOOGLE DRIVE FOR AI PODCAST SYNCING
+          </div>
+          <div className="text-[9px] md:text-[10px] text-blue-300 font-mono normal-case tracking-normal flex flex-wrap justify-center items-center gap-1 mt-1 text-center" onClick={(e) => e.stopPropagation()}>
+            <AlertCircle className="w-3 h-3 text-yellow-400 hidden md:block" /> Getting Error 400? Add this to "Authorized JavaScript origins" in Google Cloud: <span className="text-white select-all bg-black/50 px-2 py-0.5 rounded">{currentOrigin}</span>
+          </div>
+        </div>
+      );
+    }
+    if (!isAutoSyncing) return null;
+    return (
+      <div className="fixed top-0 left-0 w-full bg-emerald-600/20 border-b border-emerald-500/30 backdrop-blur-md z-[100] py-1 px-4 flex justify-center items-center gap-2 text-emerald-300 text-[10px] font-bold tracking-widest">
+        <ServerCog className="w-3 h-3 animate-pulse" /> AI AUTO-SYNCING TO GOOGLE DRIVE ({syncQueue.length} remaining)
+      </div>
+    );
+  };
+
+  // 1. Landing & Main Library View
+  if (viewState === 'subjects') {
+    const recentNoteData = notes.find(n => n.id === recentlyReadId);
+    let displaySubjects = Object.keys(hierarchy);
+    let searchResults = [];
+    if (searchQuery.trim().length > 0) {
+      searchResults = notes.filter(n => (n.topic || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <TopSyncBanner />
+        
+        <div className="h-screen w-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth relative z-10 hide-scrollbar">
+          {/* HERO SECTION */}
+          <div className="min-h-screen w-full snap-start flex flex-col items-center justify-center relative px-4 md:px-6 text-center">
+            <div className="absolute top-[10%] md:top-[20%] left-[10%] md:left-[20%] text-blue-500/10 animate-pulse duration-1000 pointer-events-none"><Brain className="w-32 h-32 md:w-64 md:h-64" /></div>
+            <div className="absolute bottom-[10%] md:bottom-[20%] right-[10%] md:right-[20%] text-purple-500/10 animate-pulse duration-1000 delay-500 pointer-events-none"><Dna className="w-32 h-32 md:w-64 md:h-64" /></div>
+
+            {/* Spotlight Search */}
+            <div className="absolute top-20 md:top-24 left-1/2 -translate-x-1/2 w-full max-w-xs md:max-w-lg px-4 z-50">
+               <div className="relative group">
+                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-4 w-4 md:h-5 md:w-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" /></div>
+                 <input 
+                   type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                   className="w-full bg-white/5 border border-white/10 text-white rounded-full py-2.5 md:py-3 pl-10 md:pl-12 pr-4 shadow-lg backdrop-blur-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white/10 transition-all placeholder-gray-400 font-sans text-sm md:text-base" 
+                   placeholder="Spotlight Search..." 
+                 />
+               </div>
+            </div>
+            
+            <h1 className="text-5xl md:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 drop-shadow-2xl mb-4 md:mb-6 mt-16 md:mt-0">
+              View<span className="text-blue-500">M</span>
+            </h1>
+            <p className="text-base md:text-2xl text-gray-300 font-light max-w-2xl leading-relaxed mb-8 md:mb-10 drop-shadow-md px-4">
+              Your intelligent medical vault. Turn handwritten notes into <span className="font-semibold text-white">fully immersive, deep-dive audio masterclasses.</span>
+            </p>
+
+            {/* Recently Read */}
+            {recentNoteData && !searchQuery && (
+              <div onClick={() => handleOpenNote(recentNoteData)} className="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md px-5 py-2.5 md:px-6 md:py-3 rounded-full flex items-center gap-3 cursor-pointer transition-all shadow-lg hover:scale-105 group w-max max-w-full">
+                <Clock className="w-4 h-4 md:w-5 md:h-5 text-blue-400 group-hover:animate-spin-slow flex-shrink-0" />
+                <div className="flex flex-col items-start overflow-hidden">
+                  <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-blue-300 font-bold">Continue Reading</span>
+                  <span className="text-xs md:text-sm font-semibold text-white truncate max-w-[150px] md:max-w-[200px]">{recentNoteData.topic}</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 ml-1 md:ml-2 group-hover:text-white flex-shrink-0" />
+              </div>
+            )}
+
+            {!searchQuery && (
+              <button onClick={() => document.getElementById('curriculum-grid').scrollIntoView({ behavior: 'smooth' })} className="group flex flex-col items-center gap-2 text-white/50 hover:text-white transition-colors absolute bottom-8 md:bottom-12">
+                <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase">Scroll to Library</span>
+                <ChevronDown className="w-6 h-6 md:w-8 md:h-8 animate-bounce mt-1 md:mt-2" />
+              </button>
+            )}
+          </div>
+
+          {/* GRID SECTION */}
+          <div id="curriculum-grid" className="min-h-screen w-full snap-start pt-20 md:pt-24 pb-20 px-4 md:px-8 flex flex-col items-center justify-start">
+            {searchQuery ? (
+               <div className="max-w-7xl mx-auto w-full">
+                 <h2 className="text-xl md:text-2xl font-bold mb-6 md:mb-8 flex items-center gap-2 text-white"><Search className="w-5 h-5 md:w-6 md:h-6 text-blue-400"/> Search Results</h2>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    {searchResults.map(note => (
+                      <div key={note.id} onClick={() => handleOpenNote(note)} className="relative h-48 md:h-64 rounded-2xl cursor-pointer hover:scale-[1.02] transition-transform overflow-hidden shadow-xl border border-white/10">
+                        {note.cover_image_url ? <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110" style={{ backgroundImage: `url(${note.cover_image_url})` }} /> : <div className="absolute inset-0 bg-gray-800" />}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                        <div className="absolute bottom-0 left-0 p-4 w-full"><h2 className="text-lg md:text-xl font-bold text-white mb-1 drop-shadow-md truncate">{note.topic || 'Untitled'}</h2><div className="flex items-center text-[10px] md:text-xs text-gray-300 drop-shadow-md"><FileText className="w-3 h-3 mr-1" /> {note.created_at ? new Date(note.created_at).toLocaleDateString() : 'Unknown'}</div></div>
+                      </div>
+                    ))}
+                 </div>
+               </div>
+            ) : (
+              <>
+                <header className="mb-8 md:mb-12 flex items-center space-x-3 self-start max-w-7xl mx-auto w-full">
+                  <Library className="w-6 h-6 md:w-8 md:h-8 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg text-white">Your Curriculum</h1>
+                </header>
+                
+                {Object.keys(hierarchy).length === 0 ? (
+                  <div className="text-center p-8 md:p-12 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl max-w-2xl w-full text-gray-300 shadow-xl mt-6">
+                    <Activity className="w-10 h-10 md:w-12 md:h-12 text-blue-400 mx-auto mb-4 opacity-50" />
+                    <p className="text-base md:text-lg font-medium">Your medical vault is empty.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-7xl w-full">
+                      {displaySubjects.map(subject => {
+                        let totalNotes = 0;
+                        Object.values(hierarchy[subject] || {}).forEach(section => { Object.values(section || {}).forEach(chapter => { totalNotes += (chapter || []).length; }); });
+                        const isGlossyBlack = (subject || '').toLowerCase().includes('community') || (subject || '').toLowerCase().includes('forensic');
+
+                        return (
+                          <div key={subject} onClick={() => { setSelectedSubject(subject); setViewState('sections'); }}
+                              className={`group aspect-square flex flex-col justify-center items-center text-center rounded-2xl md:rounded-3xl p-4 md:p-6 cursor-pointer transition-all duration-300 hover:scale-[1.03]
+                                ${isGlossyBlack ? 'bg-black/90 backdrop-blur-xl border border-white/5 shadow-xl hover:bg-black hover:shadow-2xl' : 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-lg hover:bg-white/10'}`}>
+                            {getSubjectIcon(subject)}
+                            <h2 className={`text-sm md:text-xl lg:text-2xl font-bold mb-2 drop-shadow-md text-white line-clamp-2 leading-tight`}>{subject}</h2>
+                            <div className={`text-[9px] md:text-xs font-bold px-2 py-0.5 md:px-3 md:py-1 rounded-full ${isGlossyBlack ? 'bg-gray-800 text-gray-300 border border-gray-700' : 'bg-blue-500/20 text-blue-300'}`}>
+                              {totalNotes} Doc{totalNotes !== 1 && 's'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {hasMore && (
+                      <button onClick={() => loadNotes(true)} className="mt-10 md:mt-12 px-6 py-2.5 md:px-8 md:py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full font-bold tracking-widest text-xs md:text-sm text-blue-300 transition-all">
+                        LOAD MORE NOTES
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // 2. Sections View
+  if (viewState === 'sections') {
+    const sections = hierarchy[selectedSubject] || {};
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <TopSyncBanner />
+        <div className="min-h-screen text-white p-4 md:p-8 font-sans relative z-10 pt-16 md:pt-20">
+          <header className="mb-8 md:mb-12"><button onClick={() => setViewState('subjects')} className="flex items-center text-blue-400 hover:text-white mb-4 text-sm md:text-base"><ArrowLeft className="w-4 h-4 md:w-5 md:h-5 mr-1" /> Back</button><h1 className="text-3xl md:text-4xl font-bold">{selectedSubject}</h1></header>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 max-w-5xl mx-auto">
+            {Object.keys(sections).map(section => {
+              const numChapters = Object.keys(sections[section] || {}).length;
+              let totalNotes = 0;
+              Object.values(sections[section] || {}).forEach(chap => totalNotes += (chap || []).length);
+              return (
+                <div key={section} onClick={() => { setSelectedSection(section); setViewState('chapters'); }} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 md:p-5 cursor-pointer hover:bg-white/10 transition-all flex items-center justify-between">
+                  <div className="flex items-center space-x-3 md:space-x-4"><div className="bg-blue-500/20 p-2.5 md:p-3 rounded-lg"><Layers className="w-5 h-5 md:w-6 md:h-6 text-blue-300" /></div>
+                    <div><h2 className="text-lg md:text-xl font-bold">{section}</h2><p className="text-xs md:text-sm text-gray-400">{numChapters} Chap • {totalNotes} Note{totalNotes !== 1 && 's'}</p></div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-gray-500" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // 3. Chapters View
+  if (viewState === 'chapters') {
+    const chapters = hierarchy[selectedSubject]?.[selectedSection] || {};
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <TopSyncBanner />
+        <div className="min-h-screen text-white p-4 md:p-8 font-sans relative z-10 pt-16 md:pt-20">
+          <header className="mb-8 md:mb-12"><button onClick={() => setViewState('sections')} className="flex items-center text-blue-400 hover:text-white mb-4 text-sm md:text-base"><ArrowLeft className="w-4 h-4 md:w-5 md:h-5 mr-1" /> Back to {selectedSubject}</button><h1 className="text-2xl md:text-4xl font-bold leading-tight">{selectedSection}</h1></header>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 max-w-5xl mx-auto">
+            {Object.keys(chapters).map(chapter => (
+              <div key={chapter} onClick={() => { setSelectedChapter(chapter); setViewState('notes'); }} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-3 md:p-4 cursor-pointer hover:bg-white/10 transition-all flex items-center justify-between">
+                <div className="flex items-center space-x-3"><FolderTree className="w-4 h-4 md:w-5 md:h-5 text-indigo-400 flex-shrink-0" /><h2 className="text-sm md:text-lg font-medium truncate pr-2">{chapter}</h2></div>
+                <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                  <span className="text-[10px] md:text-xs font-medium bg-white/10 px-2 py-1 rounded text-gray-300">{(chapters[chapter] || []).length}</span>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-gray-500" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // 4. Notes Grid View
+  if (viewState === 'notes') {
+    const chapterNotes = hierarchy[selectedSubject]?.[selectedSection]?.[selectedChapter] || [];
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <TopSyncBanner />
+        <div className="min-h-screen text-white p-4 md:p-8 font-sans relative z-10 pt-16 md:pt-20">
+          <header className="mb-8 md:mb-12"><button onClick={() => setViewState('chapters')} className="flex items-center text-blue-400 hover:text-white mb-4 text-sm md:text-base"><ArrowLeft className="w-4 h-4 md:w-5 md:h-5 mr-1" /> Back</button><h1 className="text-2xl md:text-4xl font-bold leading-tight">{selectedChapter}</h1></header>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto">
+            {chapterNotes.map(note => (
+              <div key={note.id} onClick={() => handleOpenNote(note)} className="relative h-48 md:h-64 rounded-xl md:rounded-2xl cursor-pointer hover:scale-[1.02] transition-transform overflow-hidden shadow-xl border border-white/10">
+                {note.cover_image_url ? <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110" style={{ backgroundImage: `url(${note.cover_image_url})` }} /> : <div className="absolute inset-0 bg-gray-800" />}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                <div className="absolute top-3 right-3 md:top-4 md:right-4 z-10">
+                  {isOpeningNote === note.id ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-white animate-spin drop-shadow-md" /> : <Bookmark className="w-4 h-4 md:w-5 md:h-5 text-white/50 hover:text-yellow-400 transition-colors drop-shadow-md" />}
+                </div>
+                <div className="absolute bottom-0 left-0 p-4 md:p-5 w-full"><h2 className="text-lg md:text-xl font-bold text-white mb-1 drop-shadow-md truncate">{note.topic || 'Untitled'}</h2><div className="flex items-center text-[10px] md:text-xs text-gray-300 drop-shadow-md"><FileText className="w-3 h-3 mr-1" /> {note.created_at ? new Date(note.created_at).toLocaleDateString() : 'Unknown'}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // 5. Immersive Reader View
+  if (viewState === 'reader' && currentNote) {
+    let parsedData = {};
+    try {
+      parsedData = typeof currentNote.data_json === 'string' ? JSON.parse(currentNote.data_json) : (currentNote.data_json || {});
+      if (typeof parsedData === 'string') parsedData = JSON.parse(parsedData);
+    } catch(e) {}
+
+    const pagesArray = Array.isArray(parsedData.generatedPages) ? parsedData.generatedPages : (parsedData.generatedPages ? [parsedData.generatedPages] : []);
+    const { theme, font, paper, contentImageUrl } = parsedData;
+    const coverImageUrl = currentNote.cover_image_url;
+
+    return (
+      <div className={`min-h-screen desk-bg font-sans relative ${theme || 'theme-classic'} ${font || 'font-patrick'} w-full overflow-x-hidden`}>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <TopSyncBanner />
+
+        {podcastAudioUrl && (
+          <audio ref={audioRef} src={podcastAudioUrl} 
+            onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+            onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+            onEnded={() => setIsPlaying(false)}
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <div className="bg-slate-900 border border-red-500/30 shadow-2xl rounded-2xl md:rounded-3xl p-5 md:p-8 max-w-md w-full font-sans">
+              <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4 text-red-400"><AlertCircle className="w-6 h-6 md:w-8 md:h-8" /><h3 className="text-xl md:text-2xl font-bold text-white">Universal Delete?</h3></div>
+              <p className="text-white/70 mb-6 md:mb-8 font-light leading-relaxed text-sm md:text-base">Permanently delete "{currentNote.topic}" from ViewM, wipe the audio from your Google Drive, and drop the Turso DB records?</p>
+              <div className="flex justify-end gap-2 md:gap-3">
+                <button onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting} className="px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-white/70 hover:bg-white/10 transition font-medium text-sm md:text-base">Cancel</button>
+                <button onClick={handleDeleteUniversal} disabled={isDeleting} className="px-4 py-2 md:px-5 md:py-2.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-white flex items-center gap-2 font-medium text-sm md:text-base">
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top Floating App Bar */}
+        <div className="bg-gray-950/95 border-b border-gray-800 sticky top-0 z-50 px-3 py-2.5 md:px-4 md:py-3 flex justify-between items-center shadow-xl mt-8 md:mt-6">
+          <button onClick={() => setViewState('subjects')} className="text-blue-400 hover:text-white text-xs md:text-sm flex items-center font-sans font-bold flex-shrink-0"><ArrowLeft className="w-3 h-3 md:w-4 md:h-4 mr-1" /> Library</button>
+          
+          <div className="flex-1 flex justify-center w-full mx-2 md:mx-4 overflow-hidden">
+            {podcastState === 'idle' && (
+              <button onClick={handleManualPodcastGen} className="flex items-center gap-1.5 md:gap-2 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 hover:border-blue-400/60 px-3 py-1.5 md:px-5 md:py-2 rounded-full text-blue-300 hover:text-blue-200 transition-all text-[10px] md:text-sm font-semibold shadow-[0_0_15px_rgba(59,130,246,0.15)] group whitespace-nowrap">
+                <Headphones className="w-3 h-3 md:w-5 md:h-5 group-hover:scale-110 transition-transform flex-shrink-0" /> <span className="truncate">Generate Masterclass</span>
+              </button>
+            )}
+
+            {podcastState === 'loading' && (
+               <div className="flex flex-col items-center w-full max-w-[200px] md:max-w-sm px-2 md:px-4">
+                 <div className="flex justify-between w-full mb-1">
+                   <span className="text-[8px] md:text-[10px] text-blue-300 font-bold uppercase tracking-wider animate-pulse truncate pr-2">{podcastStatusText}</span>
+                   <span className="text-[8px] md:text-[10px] text-blue-300 font-bold">{podcastProgress}%</span>
+                 </div>
+                 <div className="w-full h-1 md:h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                   <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300" style={{ width: `${podcastProgress}%` }} />
+                 </div>
+               </div>
+            )}
+
+            {podcastState === 'ready' && (
+              <div className="flex items-center gap-2 md:gap-4 bg-white/5 border border-white/10 px-2 py-1 md:px-4 md:py-2 rounded-full shadow-lg backdrop-blur-xl max-w-full overflow-x-auto hide-scrollbar">
+                <button onClick={togglePlayPause} className="bg-blue-500 hover:bg-blue-400 text-white p-1.5 md:p-2 rounded-full transition-transform hover:scale-105 shadow-[0_0_15px_rgba(59,130,246,0.4)] flex-shrink-0">
+                  {isPlaying ? <Pause className="w-3 h-3 md:w-5 md:h-5 fill-current" /> : <Play className="w-3 h-3 md:w-5 md:h-5 fill-current ml-0.5" />}
+                </button>
+                <div className="flex items-center gap-1.5 md:gap-3 border-l border-r border-white/10 px-1.5 md:px-3">
+                  <button onClick={() => skipTime(-10)} className="text-gray-400 hover:text-white transition-colors"><Rewind className="w-3 h-3 md:w-4 md:h-4" /></button>
+                  <div className="flex items-center gap-1 md:gap-2 w-16 sm:w-32 md:w-48">
+                    <span className="text-[8px] md:text-[10px] font-mono text-gray-400 hidden sm:inline">{formatTime(currentTime)}</span>
+                    <div className="flex-1 h-1 bg-gray-800 rounded-full relative overflow-hidden cursor-pointer" 
+                         onClick={(e) => { 
+                           if (!audioRef.current) return;
+                           const rect = e.currentTarget.getBoundingClientRect();
+                           const clickRatio = (e.clientX - rect.left) / rect.width;
+                           audioRef.current.currentTime = clickRatio * duration;
+                         }}>
+                      <div className="absolute top-0 left-0 h-full bg-blue-400 pointer-events-none" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                    </div>
+                  </div>
+                  <button onClick={() => skipTime(10)} className="text-gray-400 hover:text-white transition-colors"><FastForward className="w-3 h-3 md:w-4 md:h-4" /></button>
+                </div>
+                <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+                  <button onClick={toggleSpeed} className="hidden sm:flex items-center gap-1 text-[10px] md:text-xs font-bold text-blue-300 hover:text-blue-200 w-10 md:w-12 justify-center"><Gauge className="w-2.5 h-2.5 md:w-3 md:h-3" /> {playbackRate}x</button>
+                  
+                  {/* Focus Toggle */}
+                  <button onClick={() => setKaraokeEnabled(!karaokeEnabled)} className={`flex items-center gap-0.5 md:gap-1 text-[8px] md:text-[10px] font-bold tracking-widest px-1.5 py-0.5 md:px-2 md:py-1 rounded transition-colors ${karaokeEnabled ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
+                    <Zap className="w-2.5 h-2.5 md:w-3 md:h-3" /> <span className="hidden sm:inline">FOCUS</span>
+                  </button>
+                  
+                  {/* Drive Status Badge */}
+                  {googleToken && (
+                    <div className="hidden md:flex items-center gap-1 text-[10px] text-emerald-400 font-bold tracking-widest px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
+                      <HardDrive className="w-3 h-3" /> G-DRIVE
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+            <button onClick={handleDownloadPdf} disabled={isDownloading} className="bg-white/10 hover:bg-white/20 text-white p-1.5 md:p-2 rounded-lg transition-all flex items-center justify-center" title="Download as PDF">
+              {isDownloading ? <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" /> : <FileText className="w-3 h-3 md:w-4 md:h-4" />}
+            </button>
+            <button onClick={() => setShowDeleteConfirm(true)} className="bg-red-500/20 hover:bg-red-500/40 text-red-400 p-1.5 md:p-2 rounded-lg transition-all" title="Universal Delete">
+              <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Notebook Render Area */}
+        <div className="w-full flex justify-center py-4 md:py-8 px-2 md:px-4 pb-24 relative z-10">
+          <div id="notebook-paper" style={{ width: '100%', maxWidth: '800px' }}>
+            {/* Cover Page */}
+            <div className={`notebook-page cover-page relative ${paper || 'paper-blank'}`}>
+              <div className="binder-holes"><div className="hole"></div><div className="hole"></div><div className="hole"></div><div className="hole"></div><div className="hole"></div></div>
+              {coverImageUrl && <div className="cover-doodle-bg" style={{ backgroundImage: `url(${coverImageUrl})` }} />}
+              <div className="cover-title-plate">
+                <h1 className="cover-title">{currentNote.topic || 'Untitled Note'}</h1>
+                <div className="cover-subtitle"><span className="cover-subtitle-top">Saved via NotesM</span><span className="cover-subtitle-bottom">ViewM Library</span></div>
+              </div>
+            </div>
+
+            {/* Content Pages */}
+            {pagesArray.map((html, i) => (
+              <div key={i} className={`notebook-page notes-content relative ${paper || 'paper-blank'}`}>
+                <div className="binder-holes"><div className="hole"></div><div className="hole"></div><div className="hole"></div><div className="hole"></div><div className="hole"></div></div>
+                <div className="absolute top-2 right-4 opacity-30 text-xs font-sans z-50">Pg. {i + 1}</div>
+                {contentImageUrl && <div className="content-doodle-bg" style={{ backgroundImage: `url(${contentImageUrl})` }} />}
+                <div className="notes-inner-container clear-both" dangerouslySetInnerHTML={{ __html: html }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety Fallback Render (Prevents White Screen if state desyncs)
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+      <GenZMedBackground />
+      <div className="min-h-screen flex flex-col items-center justify-center text-white relative z-10 p-6">
+         <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
+         <p className="text-gray-400">Rebuilding Interface...</p>
+         <button onClick={() => setViewState('subjects')} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-sm">Force Library Return</button>
+      </div>
     </>
-  )
+  );
 }
-
-export default App
