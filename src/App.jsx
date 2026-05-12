@@ -11,21 +11,21 @@ import {
 // ==========================================
 // 1. CONFIGURATION & API SECRETS
 // ==========================================
-// Note: Hardcoded for ES2015 Canvas Preview compatibility. 
-// When deploying to Vercel, replace with process.env or import.meta.env
 const TURSO_URL = 'https://notesm-masroor.aws-ap-south-1.turso.io/v2/pipeline';
 const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzg1MDU3NjksImlkIjoiMDE5ZTE3MzMtZDIwMS03NjY4LWFjNTAtNmEzNzYyMTMxODAwIiwicmlkIjoiZWJiZDlmYzEtOWQ1Yy00MDM4LWI5ODItYjcyMzk0NTZmYzEwIn0.-roz5dU0xwtMoqxz6Qf_noy9Xglnru5OernNtn7D5yXcpA6s1Xi9ZiipiYjOyl-sGQfJeCOEBuxZ6ZcbF7YlBA';
-const apiKey = ""; // Gemini API is injected automatically by Canvas Environment
+
+// ⚠️ REQUIRED: Paste your Gemini Developer Key here or Podcasts will not generate!
+const apiKey = "AIzaSyD34XajBfPcb00iCTnuCuoImfvcZpu-y2g"; 
+
 const GOOGLE_CLIENT_ID = "385521646829-av0otakn0p8hbf1j38jbs5f3nsd81vcc.apps.googleusercontent.com";
 
 
 // ==========================================
-// 2. CSS ARCHITECTURE (EMBEDDED FOR STABILITY)
+// 2. CSS ARCHITECTURE (EMBEDDED)
 // ==========================================
 const fontsCSS = `
   @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Shadows+Into+Light&family=Patrick+Hand&family=Reenie+Beanie&family=Architects+Daughter&family=Indie+Flower&family=Gochi+Hand&family=Cedarville+Cursive&family=Herr+Von+Muellerhoff&family=La+Belle+Aurore&family=League+Script&family=Meddon&family=Nothing+You+Could+Do&family=Qwigley&family=Zeyada&display=swap');
   
-  /* Font Families */
   .font-patrick { --font-heading: 'Patrick Hand', cursive; --font-body: 'Patrick Hand', cursive; --font-accent: 'Kalam', cursive; }
   .font-kalam { --font-heading: 'Kalam', cursive; --font-body: 'Kalam', cursive; --font-accent: 'Patrick Hand', cursive; }
   .font-notebook { --font-heading: 'Caveat', cursive; --font-body: 'Caveat', cursive; --font-accent: 'Shadows Into Light', cursive; }
@@ -43,12 +43,10 @@ const fontsCSS = `
   .font-muellerhoff { --font-heading: 'Herr Von Muellerhoff', cursive; --font-body: 'Herr Von Muellerhoff', cursive; --font-accent: 'Meddon', cursive; }
   .font-league { --font-heading: 'League Script', cursive; --font-body: 'League Script', cursive; --font-accent: 'Nothing You Could Do', cursive; }
   
-  /* Color Themes */
   .theme-classic { --bg-color: #fcf9f2; --text-main: #0d47a1; --heading: #4a148c; --red-flag: #b71c1c; --green-pen: #1b5e20; --yellow-hl: #ffeb3b; --line-color: #e4e4e4; --margin-line: rgba(255, 100, 100, 0.4); --callout-bg: rgba(255, 255, 255, 0.95); --callout-border: #333; --hole-color: #2c3e50; }
   .theme-dark { --bg-color: #1a1b26; --text-main: #7aa2f7; --heading: #bb9af7; --red-flag: #f7768e; --green-pen: #9ece6a; --yellow-hl: #e0af68; --line-color: #24283b; --margin-line: rgba(247, 118, 142, 0.3); --callout-bg: rgba(26, 27, 38, 0.98); --callout-border: #565f89; --hole-color: #16161e; }
   .theme-sepia { --bg-color: #f4ecd8; --text-main: #3e2723; --heading: #5d4037; --red-flag: #b71c1c; --green-pen: #33691e; --yellow-hl: #fbc02d; --line-color: #d7ccc8; --margin-line: rgba(255, 100, 100, 0.4); --callout-bg: rgba(244, 236, 216, 0.95); --callout-border: #4e342e; --hole-color: #3e2723; }
   
-  /* Paper Textures & Desk */
   .paper-ruled { background-image: linear-gradient(var(--line-color) 1.5px, transparent 1.5px); background-size: 100% 2rem; }
   .paper-dotted { background-image: radial-gradient(var(--line-color) 2px, transparent 2px); background-size: 1.5rem 1.5rem; }
   .paper-grid { background-image: linear-gradient(var(--line-color) 1px, transparent 1px), linear-gradient(90deg, var(--line-color) 1px, transparent 1px); background-size: 1.5rem 1.5rem; }
@@ -60,7 +58,6 @@ const fontsCSS = `
     background-size: 30px 30px; 
   }
   
-  /* Notebook Layout */
   .notes-content, .notes-content * { box-sizing: border-box !important; word-break: break-word; }
   
   .notebook-page { 
@@ -73,7 +70,6 @@ const fontsCSS = `
     .notebook-page { padding: 3rem 2.5rem 3rem 5.5rem; border-radius: 4px 12px 12px 4px; min-height: 1100px; margin-bottom: 3rem; } 
   }
   
-  /* Margin Line SVG */
   .notes-content::before { 
     content: ''; position: absolute; top: 0; bottom: 0; left: 1.5rem; width: 1.5rem; 
     background-image: url("data:image/svg+xml,%3Csvg width='30' height='100' viewBox='0 0 30 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 15 0 C 35 25, 35 25, 15 50 C -5 75, -5 75, 15 100' stroke='rgba(255,100,100,0.4)' stroke-width='2' fill='none'/%3E%3Cpath d='M 15 0 C -5 25, -5 25, 15 50 C 35 75, 35 75, 15 100' stroke='rgba(255,100,100,0.4)' stroke-width='2' fill='none'/%3E%3Cline x1='10' y1='12.5' x2='20' y2='12.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='5' y1='25' x2='25' y2='25' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='37.5' x2='20' y2='37.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='62.5' x2='20' y2='62.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='5' y1='75' x2='25' y2='75' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3Cline x1='10' y1='87.5' x2='20' y2='87.5' stroke='rgba(255,100,100,0.3)' stroke-width='1.5'/%3E%3C/svg%3E"); 
@@ -81,13 +77,11 @@ const fontsCSS = `
   }
   @media (min-width: 640px) { .notes-content::before { left: 2.5rem; width: 2rem; background-size: 100% 120px; } }
   
-  /* Binder Holes */
   .binder-holes { position: absolute; top: 0; left: 0; bottom: 0; width: 1.5rem; background: linear-gradient(to right, rgba(0,0,0,0.05), transparent); border-right: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; padding: 2rem 0; z-index: 11; }
   @media (min-width: 640px) { .binder-holes { width: 3rem; } }
   .hole { width: 8px; height: 8px; background: var(--hole-color); border-radius: 50%; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5); }
   @media (min-width: 640px) { .hole { width: 16px; height: 16px; box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5); } }
   
-  /* Images & Backgrounds */
   .cover-doodle-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.85; mix-blend-mode: multiply; z-index: 1; pointer-events: none; }
   .theme-dark .cover-doodle-bg { mix-blend-mode: normal; filter: invert(1) hue-rotate(180deg) opacity(0.8); }
   .theme-sepia .cover-doodle-bg { mix-blend-mode: multiply; filter: sepia(0.5); opacity: 0.9; }
@@ -95,10 +89,9 @@ const fontsCSS = `
   .content-doodle-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.05; mix-blend-mode: multiply; filter: grayscale(1); z-index: 0; pointer-events: none; }
   .theme-dark .content-doodle-bg { mix-blend-mode: screen; filter: invert(1) grayscale(1); opacity: 0.03; }
   .theme-sepia .content-doodle-bg { mix-blend-mode: multiply; filter: sepia(0.8); opacity: 0.08; }
-  
   .notes-inner-container { position: relative; z-index: 2; } 
   
-  /* FOCUS / KARAOKE HIGHLIGHT */
+  /* V1.6 Karaoke Highlight Class - Smooth & Precise */
   .karaoke-highlight {
     position: relative; z-index: 10;
     background: rgba(255, 235, 59, 0.25) !important;
@@ -113,7 +106,6 @@ const fontsCSS = `
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   }
 
-  /* Typography & Elements */
   .cover-page { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
   .cover-title-plate { position: relative; z-index: 20; background: var(--bg-color); border: 3px dashed var(--heading); border-radius: 20px; padding: 2.5rem 3rem; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); transform: rotate(-2deg); max-width: 85%; }
   .theme-dark .cover-title-plate { box-shadow: 8px 8px 0px rgba(0,0,0,0.5); }
@@ -164,13 +156,12 @@ const fontsCSS = `
   .theme-dark .notes-content .callout.viva-tip { border-color: #ffb74d; }
   .theme-dark .notes-content .callout.viva-tip .callout-title { border-color: #ffb74d; color: #ffb74d; }
   
-  /* Hide overall scrollbar to preserve app feel */
   .hide-scrollbar::-webkit-scrollbar { display: none; }
   .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 `;
 
 // ==========================================
-// 3. UTILITIES & API HELPERS
+// 3. UTILITIES & STORAGE (V1.6 HYBRID CACHE)
 // ==========================================
 
 const apiFetchWithBackoff = async (url, payload) => {
@@ -192,10 +183,22 @@ const apiFetchWithBackoff = async (url, payload) => {
   }
 };
 
+// V1.6 Fix: Re-introduced IndexedDB for local testing when G-Drive is not linked
+const initCloudDB = () => {
+  return new Promise((resolve, reject) => {
+    try {
+      const request = indexedDB.open('ViewM_Local_Cache_V16', 1);
+      request.onupgradeneeded = (e) => e.target.result.createObjectStore('podcasts');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    } catch (e) { reject(e); }
+  });
+};
+
 const getDriveFilename = (noteId) => `ViewM_Masterclass_${noteId}.wav`;
 
 const findInDrive = async (token, noteId) => {
-  if (!token) return null;
+  if (!token || token === "mock") return null;
   const filename = getDriveFilename(noteId);
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${filename}' and trashed=false`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -205,8 +208,19 @@ const findInDrive = async (token, noteId) => {
   return data.files && data.files.length > 0 ? data.files[0].id : null;
 };
 
+// V1.6 Hybrid Upload (Google Drive OR Local Cache)
 const saveToCloud = async (token, noteId, blob) => {
-  if (!token || token === "mock") return; // Skip if testing locally without login
+  if (!token || token === "mock") {
+    // Save locally for Canvas testing
+    const db = await initCloudDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('podcasts', 'readwrite');
+      tx.objectStore('podcasts').put(blob, noteId);
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  }
+
+  // Save to Real Google Drive
   const filename = getDriveFilename(noteId);
   const existingId = await findInDrive(token, noteId);
   if (existingId) await deleteFromCloud(token, noteId);
@@ -227,7 +241,15 @@ const saveToCloud = async (token, noteId, blob) => {
 };
 
 const fetchFromCloud = async (token, noteId) => {
-  if (!token || token === "mock") return null; 
+  if (!token || token === "mock") {
+    const db = await initCloudDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('podcasts', 'readonly');
+      const req = tx.objectStore('podcasts').get(noteId);
+      req.onsuccess = () => res(req.result); req.onerror = rej;
+    });
+  }
+  
   const fileId = await findInDrive(token, noteId);
   if (!fileId) return null;
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
@@ -238,7 +260,14 @@ const fetchFromCloud = async (token, noteId) => {
 };
 
 const deleteFromCloud = async (token, noteId) => {
-  if (!token || token === "mock") return;
+  if (!token || token === "mock") {
+    const db = await initCloudDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('podcasts', 'readwrite');
+      tx.objectStore('podcasts').delete(noteId);
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  }
   const fileId = await findInDrive(token, noteId);
   if (!fileId) return;
   await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
@@ -247,7 +276,15 @@ const deleteFromCloud = async (token, noteId) => {
 };
 
 const getAllCloudKeys = async (token) => {
-  if (!token || token === "mock") return [];
+  if (!token || token === "mock") {
+    const db = await initCloudDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('podcasts', 'readonly');
+      const req = tx.objectStore('podcasts').getAllKeys();
+      req.onsuccess = () => res(req.result || []); req.onerror = rej;
+    });
+  }
+
   let keys = []; let pageToken = '';
   do {
     const url = `https://www.googleapis.com/drive/v3/files?q=name contains 'ViewM_Masterclass_' and trashed=false&fields=nextPageToken,files(name)&pageToken=${pageToken}`;
@@ -303,7 +340,12 @@ const executeTurso = async (sql, args = []) => {
 };
 
 const categorizeWithGeminiBatched = async (allTopics) => {
-  if (!allTopics || allTopics.length === 0) return {};
+  // V1.6 Fix: Skip categorization if no API key is provided to prevent 30 second hang
+  if (!apiKey || apiKey.trim() === "") {
+    console.warn("No Gemini API key provided. Skipping AI categorization to prevent loading freeze.");
+    return {};
+  }
+
   const resultDict = {};
   const BATCH_SIZE = 30; 
 
@@ -350,7 +392,9 @@ const pcmToWav = (pcmData, sampleRate = 24000) => {
 };
 
 const backgroundGeneratePodcast = async (noteId, topic, gToken, setStatusFn = ()=>{}) => {
-  if (!gToken) throw new Error("No Google Auth Token");
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("Missing Gemini API Key. Paste it on line 18.");
+  }
   
   setStatusFn('Fetching note data...');
   const rows = await executeTurso(`SELECT data_json FROM clinical_notes WHERE id = ?`, [noteId]);
@@ -428,7 +472,7 @@ const backgroundGeneratePodcast = async (noteId, topic, gToken, setStatusFn = ()
     if (i < audioChunks.length - 1) await new Promise(r => setTimeout(r, 4000)); 
   }
 
-  setStatusFn('Uploading to Google Drive...');
+  setStatusFn('Saving Audio Masterclass...');
   const masterWavBlob = pcmToWav(allPcmBytes, sampleRate);
   if (masterWavBlob) await saveToCloud(gToken, noteId, masterWavBlob); 
 };
@@ -462,7 +506,6 @@ const GenZMedBackground = () => (
 // 4. MAIN APPLICATION COMPONENT
 // ==========================================
 export default function App() {
-  // DB & Pagination State
   const [notes, setNotes] = useState([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -472,10 +515,8 @@ export default function App() {
   const [globalError, setGlobalError] = useState(null);
   const [isAiSorting, setIsAiSorting] = useState(false);
   
-  // Google Auth
   const [googleToken, setGoogleToken] = useState(null);
 
-  // Navigation State
   const [viewState, setViewState] = useState('subjects');
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -485,17 +526,14 @@ export default function App() {
   const [isOpeningNote, setIsOpeningNote] = useState(null);
   const [recentlyReadId, setRecentlyReadId] = useState(localStorage.getItem('viewm_recent_note'));
 
-  // App Actions
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Auto-Sync Audio Queue
   const [syncQueue, setSyncQueue] = useState([]);
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const isGeneratingRef = useRef(false);
 
-  // Audio Player State
   const [podcastState, setPodcastState] = useState('idle'); 
   const [podcastBlob, setPodcastBlob] = useState(null);
   const [podcastAudioUrl, setPodcastAudioUrl] = useState(null);
@@ -575,7 +613,7 @@ export default function App() {
       
       const uncategorizedTopics = [...new Set(combinedNotes.map(r => r.topic).filter(t => t && !aiCache[t]))];
 
-      if (uncategorizedTopics.length > 0) {
+      if (uncategorizedTopics.length > 0 && apiKey && apiKey.trim() !== "") {
         setIsAiSorting(true);
         const newCategories = await categorizeWithGeminiBatched(uncategorizedTopics);
         const mergedCache = { ...aiCache, ...newCategories };
@@ -594,7 +632,8 @@ export default function App() {
 
   // --- CHECK G-DRIVE SYNC QUEUE ---
   useEffect(() => {
-    if (!googleToken || notes.length === 0) return;
+    // Only queue if they connected Google Drive AND provided an API Key
+    if (!googleToken || notes.length === 0 || !apiKey) return;
     const checkCloudForMissingPodcasts = async () => {
       try {
         const cloudKeys = await getAllCloudKeys(googleToken);
@@ -609,7 +648,7 @@ export default function App() {
   useEffect(() => {
     let isActive = true;
     const processQueue = async () => {
-      if (isAutoSyncing || syncQueue.length === 0 || !isActive || !googleToken || isGeneratingRef.current) return;
+      if (isAutoSyncing || syncQueue.length === 0 || !isActive || !googleToken || isGeneratingRef.current || !apiKey) return;
       setIsAutoSyncing(true);
       isGeneratingRef.current = true;
       const noteToSync = syncQueue[0];
@@ -672,19 +711,13 @@ export default function App() {
         } catch (e) {}
       }, 200);
 
-      // Check Cloud for existing podcast
-      if (googleToken) {
-        fetchFromCloud(googleToken, currentNote.id).then(blob => {
-          if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
-        });
-      } else {
-        fetchFromCloud("mock", currentNote.id).then(blob => {
-           if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
-        });
-      }
+      // Check Cloud or Local Cache
+      fetchFromCloud(googleToken || "mock", currentNote.id).then(blob => {
+        if (blob) { setPodcastBlob(blob); setPodcastAudioUrl(URL.createObjectURL(blob)); setPodcastState('ready'); }
+      }).catch(err => console.error("Cloud fetch error:", err));
     }
 
-    // Explicit garbage collection on unmount or URL change
+    // Explicit garbage collection on unmount
     return () => { 
       if (podcastAudioUrl) {
          URL.revokeObjectURL(podcastAudioUrl); 
@@ -692,13 +725,21 @@ export default function App() {
     };
   }, [viewState, currentNote, googleToken]);
 
-  // --- KARAOKE FOCUS MODE ENGINE ---
+  // --- KARAOKE FOCUS MODE ENGINE (V1.6 FIX) ---
   useEffect(() => {
-    if (viewState === 'reader' && karaokeEnabled && isPlaying && duration > 0) {
+    if (viewState === 'reader' && karaokeEnabled && isPlaying) {
+      // Fallback if onLoadedMetadata failed
+      if (duration === 0 && audioRef.current?.duration) {
+         setDuration(audioRef.current.duration);
+      }
+
       const container = document.getElementById('notebook-paper');
-      if (!container) return;
+      if (!container || duration === 0) return;
       
-      const elements = Array.from(container.querySelectorAll('.notes-inner-container p, .notes-inner-container h2, .notes-inner-container h3, .notes-inner-container li, .notes-inner-container .callout'));
+      // V1.6 Fix: Filter out empty paragraphs to fix highlighting pace
+      const rawElements = Array.from(container.querySelectorAll('.notes-inner-container p, .notes-inner-container h1, .notes-inner-container h2, .notes-inner-container h3, .notes-inner-container li, .notes-inner-container .callout, .notes-inner-container table'));
+      const elements = rawElements.filter(el => el.textContent.trim().length > 0);
+      
       if (elements.length === 0) return;
 
       const progress = currentTime / duration;
@@ -706,8 +747,11 @@ export default function App() {
       if (targetIndex >= elements.length) targetIndex = elements.length - 1;
 
       elements.forEach((el, idx) => {
-        if (idx === targetIndex) el.classList.add('karaoke-highlight');
-        else el.classList.remove('karaoke-highlight');
+        if (idx === targetIndex) {
+           el.classList.add('karaoke-highlight');
+        } else {
+           el.classList.remove('karaoke-highlight');
+        }
       });
     } else {
       const container = document.getElementById('notebook-paper');
@@ -743,10 +787,16 @@ export default function App() {
 
   // --- MANUAL AUDIO GEN ---
   const handleManualPodcastGen = async () => {
+    if (!apiKey || apiKey.trim() === "") {
+       return alert("You must paste your Gemini API Key into line 18 of App.jsx to generate Podcasts!");
+    }
     if (isGeneratingRef.current) return alert("Generation already in progress.");
+    
     setPodcastState('loading'); setPodcastStatusText("Compiling deep-dive script..."); setPodcastProgress(10);
     isGeneratingRef.current = true;
+    
     try {
+      // Uses "mock" local cache if Google isn't logged in
       await backgroundGeneratePodcast(currentNote.id, currentNote.topic, googleToken || "mock", (status) => {
          setPodcastStatusText(status); setPodcastProgress(prev => prev < 90 ? prev + 5 : prev);
       });
@@ -761,28 +811,26 @@ export default function App() {
     }
   };
 
-  // --- UNIVERSAL WIPE ---
+  // --- UNIVERSAL WIPE (V1.6 CRASH FIX) ---
   const handleDeleteUniversal = async () => {
     if (!currentNote) return;
     setIsDeleting(true);
     try {
-      // 1. Drop DB Row
       await executeTurso(`DELETE FROM clinical_notes WHERE id = ?`, [currentNote.id]);
-      // 2. Drop G-Drive File
       await deleteFromCloud(googleToken || "mock", currentNote.id);
 
-      // 3. Reset Local State Immediately
       const updatedNotes = notes.filter(n => n.id !== currentNote.id);
       setNotes(updatedNotes);
       let aiCache = {}; try { aiCache = JSON.parse(localStorage.getItem('viewm_ai_cache') || '{}'); } catch(e){}
       rebuildHierarchy(updatedNotes, aiCache);
       
-      // Force Hard-Nav back to Library to prevent blank VDOM errors
+      // V1.6 Fix: Strict state clearing to prevent rendering undefined components
       setShowDeleteConfirm(false); 
       setCurrentNote(null);
       if (audioRef.current) { audioRef.current.pause(); setPodcastAudioUrl(null); }
-      setViewState('subjects');
       
+      // Force Hard-Nav back to Library
+      setViewState('subjects');
     } catch (err) { 
       console.error("Failed to delete note:", err); 
       setShowDeleteConfirm(false); 
@@ -859,7 +907,21 @@ export default function App() {
         <ServerCog className="w-3 h-3 animate-pulse" /> AI AUTO-SYNCING TO GOOGLE DRIVE ({syncQueue.length} remaining)
       </div>
     );
-  };
+  }
+
+  if (isAiSorting) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: fontsCSS }} />
+        <GenZMedBackground />
+        <div className="min-h-screen flex flex-col items-center justify-center text-white relative z-10">
+          <Sparkles className="w-16 h-16 animate-pulse text-purple-400 mb-4 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+          <h2 className="text-xl font-bold tracking-widest uppercase drop-shadow-md">Gemini Engine Active</h2>
+          <p className="text-sm mt-2 text-purple-200">Sorting new documents (Batching to protect RAM)...</p>
+        </div>
+      </>
+    );
+  }
 
   // 1. Landing & Main Library View
   if (viewState === 'subjects') {
