@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   BookOpen, Stethoscope, ChevronRight, ArrowLeft, Loader2, 
@@ -11,11 +12,9 @@ import {
 // ==========================================
 // 1. CONFIGURATION & API SECRETS
 // ==========================================
-// Note: Hardcoded for ES2015 Canvas Preview compatibility. 
-// When deploying to Vercel, replace with process.env or import.meta.env
 const TURSO_URL = 'https://notesm-masroor.aws-ap-south-1.turso.io/v2/pipeline';
 const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzg1MDU3NjksImlkIjoiMDE5ZTE3MzMtZDIwMS03NjY4LWFjNTAtNmEzNzYyMTMxODAwIiwicmlkIjoiZWJiZDlmYzEtOWQ1Yy00MDM4LWI5ODItYjcyMzk0NTZmYzEwIn0.-roz5dU0xwtMoqxz6Qf_noy9Xglnru5OernNtn7D5yXcpA6s1Xi9ZiipiYjOyl-sGQfJeCOEBuxZ6ZcbF7YlBA';
-const apiKey = "AIzaSyCOjKUor6mzPljL5r3EW1ncUSrn4HX-Z1s"; // Gemini API is injected automatically by Canvas Environment
+const apiKey = "AIzaSyCOjKUor6mzPljL5r3EW1ncUSrn4HX-Z1s"; 
 const GOOGLE_CLIENT_ID = "385521646829-av0otakn0p8hbf1j38jbs5f3nsd81vcc.apps.googleusercontent.com";
 
 
